@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/table';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
 
 export default function ClientDetailPage() {
   const router = useRouter();
@@ -259,3 +260,4 @@ export default function ClientDetailPage() {
     </div>
   );
 }
+
