@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -81,7 +82,7 @@ const PaymentRequestForm: React.FC<{
         </Select>
       </div>
       <div>
-        <Label htmlFor="amount">Amount ($)</Label>
+        <Label htmlFor="amount">Amount (₹)</Label>
         <Input id="amount" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} required min="0.01" step="0.01" />
       </div>
       <div>
@@ -268,7 +269,7 @@ export default function PaymentsPage() {
                   <TableRow key={payment.id} className="hover:bg-muted/50 transition-colors">
                     <TableCell className="font-medium">{payment.clientName}</TableCell>
                     <TableCell className="max-w-[200px] truncate" title={payment.description}>{payment.description}</TableCell>
-                    <TableCell className="text-right">${payment.amount.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">₹{payment.amount.toFixed(2)}</TableCell>
                     <TableCell className="text-center">
                       <Badge variant={payment.status === 'paid' ? 'default' : payment.status === 'failed' ? 'destructive' : 'secondary'} 
                             className={`capitalize flex items-center justify-center gap-1 w-28 mx-auto`}>
@@ -304,3 +305,4 @@ export default function PaymentsPage() {
     </div>
   );
 }
+

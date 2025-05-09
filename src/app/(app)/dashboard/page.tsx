@@ -6,7 +6,7 @@ import { useAppContext } from '@/contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { DollarSign, TrendingUp, TrendingDown, AlertTriangle, Users, FileText } from 'lucide-react';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Bar, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
-import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { ChartConfig, ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 
 const chartConfig = {
   income: { label: "Income", color: "hsl(var(--chart-1))" },
@@ -94,7 +94,7 @@ export default function DashboardPage() {
             <DollarSign className="h-5 w-5 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats.totalIncome.toLocaleString()}</div>
+            <div className="text-2xl font-bold">₹{stats.totalIncome.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">+20.1% from last month</p>
           </CardContent>
         </Card>
@@ -104,7 +104,7 @@ export default function DashboardPage() {
             <TrendingDown className="h-5 w-5 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats.totalExpenses.toLocaleString()}</div>
+            <div className="text-2xl font-bold">₹{stats.totalExpenses.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">+10.5% from last month</p>
           </CardContent>
         </Card>
@@ -114,7 +114,7 @@ export default function DashboardPage() {
             <AlertTriangle className="h-5 w-5 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats.pendingDues.toLocaleString()}</div>
+            <div className="text-2xl font-bold">₹{stats.pendingDues.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">{payments.filter(p => p.status === 'link_sent' || p.status === 'pending_link').length} pending payments</p>
           </CardContent>
         </Card>
@@ -141,8 +141,8 @@ export default function DashboardPage() {
               <BarChart data={monthlyData} accessibilityLayer>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} />
-                <YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `$${value/1000}k`} />
-                <ChartTooltip content={<ChartTooltipContent />} />
+                <YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `₹${value/1000}k`} />
+                <ChartTooltipContent />
                 <Legend />
                 <Bar dataKey="income" fill="var(--color-income)" radius={4} />
                 <Bar dataKey="expenses" fill="var(--color-expenses)" radius={4} />
@@ -161,7 +161,7 @@ export default function DashboardPage() {
               <ChartContainer config={chartConfig} className="w-full h-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                    <ChartTooltipContent nameKey="name" />
                     <Pie 
                       data={predictionScoreDistribution} 
                       dataKey="value" 
@@ -221,7 +221,7 @@ export default function DashboardPage() {
                     <div>
                       <p className="font-medium text-foreground">Payment {payment.status === 'paid' ? 'Received' : (payment.status === 'link_sent' ? 'Link Sent' : 'Initiated')}</p>
                       <p className="text-sm text-muted-foreground">
-                        {payment.clientName} - ${payment.amount} for "{payment.description}"
+                        {payment.clientName} - ₹{payment.amount} for "{payment.description}"
                       </p>
                     </div>
                     <span className="text-xs text-muted-foreground">{new Date(payment.createdAt).toLocaleDateString()}</span>

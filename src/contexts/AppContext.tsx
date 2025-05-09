@@ -146,7 +146,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       };
       setPayments(prev => [...prev, newPayment]);
       
-      const message = `Dear ${client.name}, please complete your payment of $${newPayment.amount} for "${newPayment.description}" using this link: ${newPayment.paymentLinkUrl}`;
+      const message = `Dear ${client.name}, please complete your payment of ₹${newPayment.amount} for "${newPayment.description}" using this link: ${newPayment.paymentLinkUrl}`;
       
       if (newPayment.communicationMethod === 'sms' || newPayment.communicationMethod === 'both') {
         await sendSMS(client.phone, message);
@@ -155,7 +155,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         await sendEmail({ to: client.email, subject: `Payment Request: ${newPayment.description}`, body: `<p>${message}</p>` });
       }
       
-      toast({ title: "Payment Link Sent", description: `Link sent to ${client.name} for $${newPayment.amount}.` });
+      toast({ title: "Payment Link Sent", description: `Link sent to ${client.name} for ₹${newPayment.amount}.` });
 
     } catch (error) {
       console.error("Error creating payment link or sending notification:", error);
@@ -250,3 +250,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+

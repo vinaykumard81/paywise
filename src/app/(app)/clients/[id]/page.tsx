@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect } from 'react';
@@ -195,7 +196,7 @@ export default function ClientDetailPage() {
                       <TableRow key={tx.id}>
                         <TableCell>{new Date(tx.date).toLocaleDateString()}</TableCell>
                         <TableCell className="max-w-[200px] truncate" title={tx.description}>{tx.description}</TableCell>
-                        <TableCell className="text-right font-medium">${tx.amount.toFixed(2)}</TableCell>
+                        <TableCell className="text-right font-medium">₹{tx.amount.toFixed(2)}</TableCell>
                         <TableCell className="text-center">
                           <Badge variant={tx.status === 'paid' ? 'default' : tx.status === 'failed' ? 'destructive' : 'secondary'} 
                                  className={`${getStatusColor(tx.status)} capitalize`}>
@@ -241,7 +242,7 @@ export default function ClientDetailPage() {
                       <TableRow key={payment.id}>
                         <TableCell>{new Date(payment.createdAt).toLocaleDateString()}</TableCell>
                         <TableCell className="max-w-[200px] truncate" title={payment.description}>{payment.description}</TableCell>
-                        <TableCell className="text-right font-medium">${payment.amount.toFixed(2)}</TableCell>
+                        <TableCell className="text-right font-medium">₹{payment.amount.toFixed(2)}</TableCell>
                         <TableCell className="text-center">
                           <Badge variant={payment.status === 'paid' ? 'default' : payment.status === 'failed' ? 'destructive' : 'secondary'} 
                                  className={`${getStatusColor(payment.status)} capitalize`}>
