@@ -1,3 +1,4 @@
+
 export type Transaction = {
   id: string;
   amount: number;
@@ -22,7 +23,7 @@ export type Client = {
 export type Payment = {
   id: string;
   clientId: string;
-  clientName: string;
+  clientName: string; // Denormalized for easier display
   amount: number;
   description: string;
   status: 'pending_link' | 'link_sent' | 'paid' | 'failed' | 'expired';
@@ -32,6 +33,21 @@ export type Payment = {
   communicationMethod: 'sms' | 'email' | 'both';
 };
 
-// For form inputs
-export type ClientFormData = Omit<Client, 'id' | 'createdAt' | 'transactions' | 'paymentHistory' | 'predictionScore' | 'riskFactors' | 'paymentSummary'>;
-export type PaymentFormData = Omit<Payment, 'id' | 'createdAt' | 'status' | 'paymentLinkUrl' | 'clientName'>;
+// For form inputs on the client-side
+export type ClientFormData = Pick<Client, 'name' | 'email' | 'phone'>;
+export type PaymentFormData = Pick<Payment, 'clientId' | 'amount' | 'description' | 'dueDate' | 'communicationMethod'>;
+
+// For API request payloads (might be slightly different from forms)
+export type CreateClientPayload = ClientFormData;
+export type UpdateClientPayload = Partial<ClientFormData>;
+
+export type CreatePaymentPayload = PaymentFormData;
+export type UpdatePaymentStatusPayload = { status: Payment['status'] };
+
+// API Response Types
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  message?: string;
+  error?: string;
+}

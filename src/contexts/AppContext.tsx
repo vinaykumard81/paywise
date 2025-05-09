@@ -1,31 +1,29 @@
 
 "use client";
 
-import type { Client, Payment, Transaction, ClientFormData, PaymentFormData } from '@/types';
+import type { Client, Payment, ClientFormData, PaymentFormData, ApiResponse } from '@/types';
 import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
-import { paymentPrediction, PaymentPredictionInput } from '@/ai/flows/payment-prediction';
-import { generatePaymentSummary, PaymentSummaryInput } from '@/ai/flows/payment-summary';
-import { createPaymentLink, PaymentLinkRequest } from '@/services/payment-gateway';
-import { sendSMS } from '@/services/sms';
-import { sendEmail } from '@/services/email';
 import { useToast } from "@/hooks/use-toast";
 
 interface AppContextType {
   clients: Client[];
   addClient: (clientData: ClientFormData) => Promise<void>;
-  updateClient: (updatedClient: Client) => Promise<void>;
-  deleteClient: (clientId: string) => void;
-  getClientById: (clientId: string) => Client | undefined;
+  updateClient: (clientId: string, updatedData: Partial<ClientFormData>) => Promise<void>;
+  deleteClient: (clientId: string) => Promise<void>;
+  getClientById: (clientId: string) => Client | undefined; // Will now find from local cache
   payments: Payment[];
   requestPayment: (paymentData: PaymentFormData) => Promise<void>;
   updatePaymentStatus: (paymentId: string, status: Payment['status']) => Promise<void>;
-  getPaymentsByClientId: (clientId: string) => Payment[];
+  getPaymentsByClientId: (clientId: string) => Payment[]; // Will now find from local cache
   user: { name: string; email: string } | null;
   login: (credentials: { email: string; }) => void;
   signup: (details: { name: string; email: string; }) => void;
   logout: () => void;
-  isLoadingAI: boolean;
+  isLoading: boolean; // Generic loading for API calls
+  isLoadingAI: boolean; // Specific for AI refresh operations
   refreshClientAIInfo: (clientId: string) => Promise<void>;
+  fetchClients: () => Promise<void>;
+  fetchPayments: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -34,87 +32,129 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [clients, setClients] = useState<Client[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(true); // For initial data load and general ops
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const { toast } = useToast();
 
-  // Mock login
-  useEffect(() => {
-    // Auto-login a mock user for development
-    setUser({ name: "Demo User", email: "demo@example.com" });
-  }, []);
+  const fetchClients = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/clients');
+      const result: ApiResponse<Client[]> = await response.json();
+      if (result.success && result.data) {
+        setClients(result.data);
+      } else {
+        toast({ title: "Error", description: result.error || "Failed to fetch clients.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to fetch clients.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
 
-  const formatPaymentHistoryForAI = (transactions: Transaction[]): string => {
-    if (!transactions || transactions.length === 0) return "No payment history.";
-    return transactions
-      .map(t => `Date: ${new Date(t.date).toLocaleDateString()}, Amount: ${t.amount}, Status: ${t.status}, Desc: ${t.description}`)
-      .join('\n');
-  };
+  const fetchPayments = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/payments');
+      const result: ApiResponse<Payment[]> = await response.json();
+      if (result.success && result.data) {
+        setPayments(result.data);
+      } else {
+        toast({ title: "Error", description: result.error || "Failed to fetch payments.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to fetch payments.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+  
+  useEffect(() => {
+    setUser({ name: "Demo User", email: "demo@example.com" }); // Mock login
+    fetchClients();
+    fetchPayments();
+  }, [fetchClients, fetchPayments]);
 
   const refreshClientAIInfo = useCallback(async (clientId: string) => {
-    const client = clients.find(c => c.id === clientId);
-    if (!client) return;
-
     setIsLoadingAI(true);
     try {
-      const predictionInput: PaymentPredictionInput = {
-        clientId: client.id,
-        paymentHistory: client.paymentHistory,
-        transactionAmount: client.transactions.reduce((sum, t) => sum + (t.status === 'pending' || t.status === 'overdue' ? t.amount : 0), 0) || 100, // Example: current due amount or a typical transaction amount
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Example: next month
-        clientDetails: `Client since ${new Date(client.createdAt).toLocaleDateString()}. Email: ${client.email}, Phone: ${client.phone}`,
-      };
-      const predictionResult = await paymentPrediction(predictionInput);
-
-      const summaryInput: PaymentSummaryInput = {
-        clientId: client.id,
-        paymentHistory: client.paymentHistory,
-      };
-      const summaryResult = await generatePaymentSummary(summaryInput);
-
-      setClients(prevClients =>
-        prevClients.map(c =>
-          c.id === clientId
-            ? {
-                ...c,
-                predictionScore: predictionResult.predictionScore,
-                riskFactors: predictionResult.riskFactors,
-                paymentSummary: summaryResult.summary,
-              }
-            : c
-        )
-      );
-      toast({ title: "AI Insights Updated", description: `Successfully updated AI insights for ${client.name}.` });
+      const response = await fetch(`/api/clients/${clientId}/refresh-ai`, { method: 'POST' });
+      const result: ApiResponse<Client> = await response.json();
+      if (result.success && result.data) {
+        setClients(prev => prev.map(c => c.id === clientId ? result.data! : c));
+        toast({ title: "AI Insights Updated", description: `Successfully updated AI insights for ${result.data.name}.` });
+      } else {
+        toast({ title: "AI Update Failed", description: result.error || "Could not update AI insights.", variant: "destructive" });
+      }
     } catch (error) {
-      console.error("Error updating AI info:", error);
+      console.error("Error refreshing AI info:", error);
       toast({ title: "AI Update Failed", description: "Could not update AI insights.", variant: "destructive" });
     } finally {
       setIsLoadingAI(false);
     }
-  }, [clients, toast]);
-
+  }, [toast]);
 
   const addClient = async (clientData: ClientFormData) => {
-    const newClient: Client = {
-      ...clientData,
-      id: Date.now().toString(), // Simple ID generation
-      createdAt: new Date().toISOString(),
-      transactions: [],
-      paymentHistory: "New client, no payment history yet.",
-    };
-    setClients(prev => [...prev, newClient]);
-    toast({ title: "Client Added", description: `${newClient.name} has been added.` });
-    await refreshClientAIInfo(newClient.id);
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(clientData),
+      });
+      const result: ApiResponse<Client> = await response.json();
+      if (result.success && result.data) {
+        setClients(prev => [...prev, result.data!]);
+        toast({ title: "Client Added", description: `${result.data.name} has been added.` });
+      } else {
+        toast({ title: "Error", description: result.error || "Failed to add client.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to add client.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const updateClient = async (updatedClient: Client) => {
-    setClients(prev => prev.map(c => c.id === updatedClient.id ? updatedClient : c));
-    toast({ title: "Client Updated", description: `${updatedClient.name}'s details have been updated.` });
-    await refreshClientAIInfo(updatedClient.id);
+  const updateClient = async (clientId: string, updatedData: Partial<ClientFormData>) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/clients/${clientId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedData),
+      });
+      const result: ApiResponse<Client> = await response.json();
+      if (result.success && result.data) {
+        setClients(prev => prev.map(c => c.id === clientId ? result.data! : c));
+        toast({ title: "Client Updated", description: `${result.data.name}'s details have been updated.` });
+      } else {
+        toast({ title: "Error", description: result.error || "Failed to update client.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update client.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
   };
   
-  const deleteClient = (clientId: string) => {
-    setClients(prev => prev.filter(c => c.id !== clientId));
-    toast({ title: "Client Deleted", description: `Client has been removed.` });
+  const deleteClient = async (clientId: string) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/clients/${clientId}`, { method: 'DELETE' });
+      const result: ApiResponse<null> = await response.json();
+      if (result.success) {
+        setClients(prev => prev.filter(c => c.id !== clientId));
+        toast({ title: "Client Deleted", description: `Client has been removed.` });
+      } else {
+        toast({ title: "Error", description: result.error || "Failed to delete client.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to delete client.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const getClientById = (clientId: string) => clients.find(c => c.id === clientId);
@@ -122,91 +162,55 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const getPaymentsByClientId = (clientId: string) => payments.filter(p => p.clientId === clientId);
 
   const requestPayment = async (paymentData: PaymentFormData) => {
-    const client = clients.find(c => c.id === paymentData.clientId);
-    if (!client) {
-      toast({ title: "Payment Request Failed", description: "Client not found.", variant: "destructive" });
-      return;
-    }
-
-    const paymentLinkRequest: PaymentLinkRequest = {
-      amount: paymentData.amount,
-      description: paymentData.description,
-      customerId: paymentData.clientId,
-    };
-
+    setIsLoading(true);
     try {
-      const paymentLink = await createPaymentLink(paymentLinkRequest);
-      const newPayment: Payment = {
-        ...paymentData,
-        id: Date.now().toString(),
-        clientName: client.name,
-        createdAt: new Date().toISOString(),
-        status: 'link_sent',
-        paymentLinkUrl: paymentLink.url,
-      };
-      setPayments(prev => [...prev, newPayment]);
-      
-      const message = `Dear ${client.name}, please complete your payment of ₹${newPayment.amount} for "${newPayment.description}" using this link: ${newPayment.paymentLinkUrl}`;
-      
-      if (newPayment.communicationMethod === 'sms' || newPayment.communicationMethod === 'both') {
-        await sendSMS(client.phone, message);
+      const response = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(paymentData),
+      });
+      const result: ApiResponse<Payment> = await response.json();
+      if (result.success && result.data) {
+        setPayments(prev => [...prev, result.data!]);
+        toast({ title: "Payment Link Sent", description: `Link sent to ${result.data.clientName} for ₹${result.data.amount}.` });
+      } else {
+        toast({ title: "Payment Request Failed", description: result.error || "Could not process payment request.", variant: "destructive" });
       }
-      if (newPayment.communicationMethod === 'email' || newPayment.communicationMethod === 'both') {
-        await sendEmail({ to: client.email, subject: `Payment Request: ${newPayment.description}`, body: `<p>${message}</p>` });
-      }
-      
-      toast({ title: "Payment Link Sent", description: `Link sent to ${client.name} for ₹${newPayment.amount}.` });
-
     } catch (error) {
       console.error("Error creating payment link or sending notification:", error);
       toast({ title: "Payment Request Failed", description: "Could not process payment request.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const updatePaymentStatus = async (paymentId: string, status: Payment['status']) => {
-    let affectedClientId: string | null = null;
-    setPayments(prevPayments =>
-      prevPayments.map(p => {
-        if (p.id === paymentId) {
-          affectedClientId = p.clientId;
-          return { ...p, status };
-        }
-        return p;
-      })
-    );
-
-    if (affectedClientId && (status === 'paid' || status === 'failed')) {
-      // Add a transaction to the client
-      const payment = payments.find(p => p.id === paymentId);
-      if (payment) {
-        const newTransaction: Transaction = {
-          id: `txn-${Date.now()}`,
-          amount: payment.amount,
-          date: new Date().toISOString(),
-          status: status === 'paid' ? 'paid' : 'failed',
-          description: `Payment for: ${payment.description}`,
-        };
-        
-        setClients(prevClients => prevClients.map(c => {
-          if (c.id === payment.clientId) {
-            const updatedTransactions = [...c.transactions, newTransaction];
-            return {
-              ...c,
-              transactions: updatedTransactions,
-              paymentHistory: formatPaymentHistoryForAI(updatedTransactions),
-            };
-          }
-          return c;
-        }));
-        await refreshClientAIInfo(payment.clientId);
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/payments/${paymentId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      const result: ApiResponse<Payment> = await response.json();
+      if (result.success && result.data) {
+        setPayments(prev => prev.map(p => p.id === paymentId ? result.data! : p));
+        // If a payment status changes, client's transactions and AI data might have changed too.
+        // Fetching clients again to reflect these server-side changes.
+        await fetchClients(); 
+        toast({ title: "Payment Status Updated", description: `Status for payment ID ${paymentId} changed to ${status}.` });
+      } else {
+        toast({ title: "Error", description: result.error || "Failed to update payment status.", variant: "destructive" });
       }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update payment status.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
     }
-    toast({ title: "Payment Status Updated", description: `Status for payment ID ${paymentId} changed to ${status}.` });
   };
 
-  // Mock auth functions
   const login = (credentials: { email: string; }) => {
-    setUser({ name: "Mock User", email: credentials.email }); // Simple mock
+    setUser({ name: "Mock User", email: credentials.email });
     toast({ title: "Logged In", description: "Welcome back!"});
   };
   const signup = (details: { name: string; email: string; }) => {
@@ -234,8 +238,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         login,
         signup,
         logout,
+        isLoading,
         isLoadingAI,
         refreshClientAIInfo,
+        fetchClients,
+        fetchPayments,
       }}
     >
       {children}
@@ -250,4 +257,3 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
-

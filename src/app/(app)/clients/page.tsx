@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/AppContext';
 import type { Client, ClientFormData } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -21,7 +22,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogClose,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { PlusCircle, Edit, Trash2, Eye, RefreshCw, FileText, Users, MoreHorizontal } from 'lucide-react';
@@ -34,75 +34,93 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const ClientForm: React.FC<{ 
   client?: Client; 
-  onSave: (clientData: ClientFormData, id?: string) => void; 
+  onSave: (clientData: ClientFormData, id?: string) => Promise<void>; 
   onClose: () => void;
-}> = ({ client, onSave, onClose }) => {
+  isLoading: boolean;
+}> = ({ client, onSave, onClose, isLoading }) => {
   const [name, setName] = useState(client?.name || '');
   const [email, setEmail] = useState(client?.email || '');
   const [phone, setPhone] = useState(client?.phone || '');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (client) {
+      setName(client.name);
+      setEmail(client.email);
+      setPhone(client.phone);
+    } else {
+      setName('');
+      setEmail('');
+      setPhone('');
+    }
+  }, [client]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({ name, email, phone }, client?.id);
+    await onSave({ name, email, phone }, client?.id);
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <Label htmlFor="name">Name</Label>
-        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
+        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required disabled={isLoading} />
       </div>
       <div>
         <Label htmlFor="email">Email</Label>
-        <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={isLoading} />
       </div>
       <div>
         <Label htmlFor="phone">Phone</Label>
-        <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+        <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required disabled={isLoading} />
       </div>
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-        <Button type="submit">Save Client</Button>
+        <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>Cancel</Button>
+        <Button type="submit" disabled={isLoading}>{isLoading ? (editingClient ? 'Saving...' : 'Adding...') : 'Save Client'}</Button>
       </DialogFooter>
     </form>
   );
 };
+// To satisfy the form, we need a way to know if it's an edit or add operation for the loading text.
+// This is a simple way, but could be more robust.
+let editingClient: Client | undefined = undefined;
 
 export default function ClientsPage() {
-  const { clients, addClient, updateClient, deleteClient, refreshClientAIInfo, isLoadingAI } = useAppContext();
+  const { clients, addClient, updateClient, deleteClient, refreshClientAIInfo, isLoading, isLoadingAI } = useAppContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingClient, setEditingClient] = useState<Client | undefined>(undefined);
+  //editingClient is now a local state for the modal trigger, not for the form content itself
+  const [currentEditingClient, setCurrentEditingClient] = useState<Client | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleSaveClient = async (clientData: ClientFormData, id?: string) => {
     if (id) {
-      const existingClient = clients.find(c => c.id === id);
-      if (existingClient) {
-        await updateClient({ ...existingClient, ...clientData });
-      }
+      await updateClient(id, clientData);
     } else {
       await addClient(clientData);
     }
     setIsModalOpen(false);
-    setEditingClient(undefined);
+    setCurrentEditingClient(undefined);
+    editingClient = undefined; // Reset global hack
   };
 
   const openAddModal = () => {
-    setEditingClient(undefined);
+    setCurrentEditingClient(undefined);
+    editingClient = undefined; // For form's loading text
     setIsModalOpen(true);
   };
 
-  const openEditModal = (client: Client) => {
-    setEditingClient(client);
+  const openEditModal = (clientObj: Client) => {
+    setCurrentEditingClient(clientObj);
+    editingClient = clientObj; // For form's loading text
     setIsModalOpen(true);
   };
 
-  const handleDeleteClient = (clientId: string) => {
+  const handleDeleteClient = async (clientId: string) => {
     if (window.confirm("Are you sure you want to delete this client? This action cannot be undone.")) {
-      deleteClient(clientId);
+      await deleteClient(clientId);
     }
   };
 
@@ -113,9 +131,9 @@ export default function ClientsPage() {
 
   const getRiskBadgeVariant = (score?: number): "default" | "secondary" | "destructive" | "outline" => {
     if (score === undefined) return "outline";
-    if (score <= 20) return "default"; // Teal like
-    if (score <= 60) return "secondary"; // Orange like
-    return "destructive"; // Red
+    if (score <= 20) return "default"; 
+    if (score <= 60) return "secondary"; 
+    return "destructive";
   };
   
   const getRiskBadgeText = (score?: number): string => {
@@ -127,28 +145,34 @@ export default function ClientsPage() {
     return "Very High";
   };
 
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Manage Clients</h1>
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <Dialog open={isModalOpen} onOpenChange={(isOpen) => {
+          setIsModalOpen(isOpen);
+          if (!isOpen) {
+            setCurrentEditingClient(undefined);
+            editingClient = undefined;
+          }
+        }}>
           <DialogTrigger asChild>
-            <Button onClick={openAddModal} className="bg-primary hover:bg-primary/90">
-              <PlusCircle className="mr-2 h-5 w-5" /> Add New Client
+            <Button onClick={openAddModal} className="bg-primary hover:bg-primary/90" disabled={isLoading}>
+              <PlusCircle className="mr-2 h-5 w-5" /> {isLoading && !currentEditingClient ? 'Loading...' : 'Add New Client'}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>{editingClient ? 'Edit Client' : 'Add New Client'}</DialogTitle>
+              <DialogTitle>{currentEditingClient ? 'Edit Client' : 'Add New Client'}</DialogTitle>
               <DialogDescription>
-                {editingClient ? 'Update the details of your client.' : 'Enter the details for the new client.'}
+                {currentEditingClient ? 'Update the details of your client.' : 'Enter the details for the new client.'}
               </DialogDescription>
             </DialogHeader>
             <ClientForm 
-              client={editingClient} 
+              client={currentEditingClient} 
               onSave={handleSaveClient} 
-              onClose={() => { setIsModalOpen(false); setEditingClient(undefined); }} 
+              onClose={() => { setIsModalOpen(false); setCurrentEditingClient(undefined); editingClient = undefined;}} 
+              isLoading={isLoading}
             />
           </DialogContent>
         </Dialog>
@@ -167,7 +191,13 @@ export default function ClientsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {filteredClients.length === 0 ? (
+          {isLoading && clients.length === 0 ? (
+             <div className="space-y-2">
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+            </div>
+          ) : filteredClients.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Users className="mx-auto h-16 w-16 mb-4" />
               <h3 className="text-xl font-semibold mb-2">No Clients Found</h3>
@@ -175,7 +205,7 @@ export default function ClientsPage() {
                 {searchTerm ? "Try adjusting your search term." : "Get started by adding your first client."}
               </p>
               {!searchTerm && (
-                 <Button onClick={openAddModal}>
+                 <Button onClick={openAddModal} disabled={isLoading}>
                     <PlusCircle className="mr-2 h-5 w-5" /> Add Client
                  </Button>
               )}
@@ -210,7 +240,7 @@ export default function ClientsPage() {
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
+                            <Button variant="ghost" size="icon" disabled={isLoading || isLoadingAI}>
                               <MoreHorizontal className="h-5 w-5" />
                               <span className="sr-only">Client Actions</span>
                             </Button>
@@ -221,14 +251,14 @@ export default function ClientsPage() {
                                 <Eye className="mr-2 h-4 w-4" /> View Details
                               </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => openEditModal(client)} className="flex items-center">
+                            <DropdownMenuItem onClick={() => openEditModal(client)} className="flex items-center" disabled={isLoading}>
                               <Edit className="mr-2 h-4 w-4" /> Edit
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => refreshClientAIInfo(client.id)} disabled={isLoadingAI} className="flex items-center">
+                            <DropdownMenuItem onClick={() => refreshClientAIInfo(client.id)} disabled={isLoadingAI || isLoading} className="flex items-center">
                               <RefreshCw className={`mr-2 h-4 w-4 ${isLoadingAI ? 'animate-spin' : ''}`} /> 
                               {isLoadingAI ? 'Refreshing...' : 'Refresh AI'}
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDeleteClient(client.id)} className="text-destructive focus:bg-destructive/10 focus:text-destructive flex items-center">
+                            <DropdownMenuItem onClick={() => handleDeleteClient(client.id)} className="text-destructive focus:bg-destructive/10 focus:text-destructive flex items-center" disabled={isLoading}>
                               <Trash2 className="mr-2 h-4 w-4" /> Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>

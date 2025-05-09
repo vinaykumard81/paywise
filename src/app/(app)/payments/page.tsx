@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppContext } from '@/contexts/AppContext';
 import type { PaymentFormData, Client, Payment } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -35,29 +35,31 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { CalendarIcon, Send, DollarSign, Filter, ClipboardList, Link as LinkIcon, CheckCircle, XCircle, AlertCircle, Clock } from 'lucide-react';
+import { CalendarIcon, Send, DollarSign, Filter, ClipboardList, Link as LinkIcon, CheckCircle, XCircle, AlertCircle, Clock, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from "@/lib/utils";
+import { Skeleton } from '@/components/ui/skeleton';
 
 const PaymentRequestForm: React.FC<{ 
   clients: Client[]; 
-  onSave: (paymentData: PaymentFormData) => void; 
+  onSave: (paymentData: PaymentFormData) => Promise<void>; 
   onClose: () => void;
-}> = ({ clients, onSave, onClose }) => {
+  isLoading: boolean;
+}> = ({ clients, onSave, onClose, isLoading }) => {
   const [clientId, setClientId] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState<Date | undefined>(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)); // Default to 1 week from now
   const [communicationMethod, setCommunicationMethod] = useState<'sms' | 'email' | 'both'>('both');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dueDate) {
       alert("Please select a due date."); // Or use toast
       return;
     }
-    onSave({ 
+    await onSave({ 
       clientId, 
       amount: parseFloat(amount), 
       description, 
@@ -70,7 +72,7 @@ const PaymentRequestForm: React.FC<{
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <Label htmlFor="client">Client</Label>
-        <Select onValueChange={setClientId} value={clientId} required>
+        <Select onValueChange={setClientId} value={clientId} required disabled={isLoading}>
           <SelectTrigger id="client">
             <SelectValue placeholder="Select a client" />
           </SelectTrigger>
@@ -83,11 +85,11 @@ const PaymentRequestForm: React.FC<{
       </div>
       <div>
         <Label htmlFor="amount">Amount (₹)</Label>
-        <Input id="amount" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} required min="0.01" step="0.01" />
+        <Input id="amount" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} required min="0.01" step="0.01" disabled={isLoading}/>
       </div>
       <div>
         <Label htmlFor="description">Description</Label>
-        <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} required />
+        <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} required disabled={isLoading}/>
       </div>
       <div>
         <Label htmlFor="dueDate">Due Date</Label>
@@ -99,6 +101,7 @@ const PaymentRequestForm: React.FC<{
                 "w-full justify-start text-left font-normal",
                 !dueDate && "text-muted-foreground"
               )}
+              disabled={isLoading}
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
               {dueDate ? format(dueDate, "PPP") : <span>Pick a date</span>}
@@ -110,14 +113,14 @@ const PaymentRequestForm: React.FC<{
               selected={dueDate}
               onSelect={setDueDate}
               initialFocus
-              disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} // Disable past dates
+              disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
             />
           </PopoverContent>
         </Popover>
       </div>
        <div>
         <Label htmlFor="communicationMethod">Send Via</Label>
-        <Select onValueChange={(value: 'sms' | 'email' | 'both') => setCommunicationMethod(value)} value={communicationMethod} required>
+        <Select onValueChange={(value: 'sms' | 'email' | 'both') => setCommunicationMethod(value)} value={communicationMethod} required disabled={isLoading}>
           <SelectTrigger id="communicationMethod">
             <SelectValue placeholder="Select communication method" />
           </SelectTrigger>
@@ -129,8 +132,10 @@ const PaymentRequestForm: React.FC<{
         </Select>
       </div>
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-        <Button type="submit">Send Payment Request</Button>
+        <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>Cancel</Button>
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...</> : 'Send Payment Request'}
+        </Button>
       </DialogFooter>
     </form>
   );
@@ -149,20 +154,22 @@ const PaymentStatusIcon = ({ status }: { status: Payment['status']}) => {
 };
 
 export default function PaymentsPage() {
-  const { clients, payments, requestPayment, updatePaymentStatus } = useAppContext();
+  const { clients, payments, requestPayment, updatePaymentStatus, isLoading } = useAppContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<Payment['status'] | 'all'>('all');
+  const [simulatingPaymentId, setSimulatingPaymentId] = useState<string | null>(null);
+
 
   const handleSavePaymentRequest = async (paymentData: PaymentFormData) => {
     await requestPayment(paymentData);
     setIsModalOpen(false);
   };
   
-  // Mock function to simulate payment completion
   const simulatePayment = async (paymentId: string, outcome: 'paid' | 'failed') => {
+    setSimulatingPaymentId(paymentId);
     await updatePaymentStatus(paymentId, outcome);
+    setSimulatingPaymentId(null);
   };
-
 
   const filteredPayments = payments.filter(payment => 
     filterStatus === 'all' || payment.status === filterStatus
@@ -184,7 +191,7 @@ export default function PaymentsPage() {
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Payments Management</h1>
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setIsModalOpen(true)} className="bg-primary hover:bg-primary/90" disabled={clients.length === 0}>
+            <Button onClick={() => setIsModalOpen(true)} className="bg-primary hover:bg-primary/90" disabled={clients.length === 0 || isLoading}>
               <Send className="mr-2 h-5 w-5" /> Request Payment
             </Button>
           </DialogTrigger>
@@ -200,6 +207,7 @@ export default function PaymentsPage() {
                 clients={clients} 
                 onSave={handleSavePaymentRequest} 
                 onClose={() => setIsModalOpen(false)} 
+                isLoading={isLoading}
               />
             ) : (
               <div className="text-center py-8 text-muted-foreground">
@@ -234,7 +242,11 @@ export default function PaymentsPage() {
           <CardDescription>View and manage all payment requests.</CardDescription>
         </CardHeader>
         <CardContent>
-          {filteredPayments.length === 0 ? (
+          {isLoading && payments.length === 0 ? (
+            <div className="space-y-2">
+              {[...Array(3)].map((_, i) => ( <Skeleton key={i} className="h-12 w-full" /> ))}
+            </div>
+          ) : filteredPayments.length === 0 ? (
              <div className="text-center py-12 text-muted-foreground">
               <DollarSign className="mx-auto h-16 w-16 mb-4" />
               <h3 className="text-xl font-semibold mb-2">No Payments Found</h3>
@@ -245,7 +257,7 @@ export default function PaymentsPage() {
                  <p className="text-sm">You need to add clients before you can request payments.</p>
               )}
               {clients.length > 0 && (
-                <Button onClick={() => setIsModalOpen(true)} className="bg-primary hover:bg-primary/90">
+                <Button onClick={() => setIsModalOpen(true)} className="bg-primary hover:bg-primary/90" disabled={isLoading}>
                     <Send className="mr-2 h-5 w-5" /> Request Payment
                 </Button>
               )}
@@ -282,8 +294,22 @@ export default function PaymentsPage() {
                     <TableCell className="text-right space-x-1">
                       {payment.status === 'link_sent' && (
                         <>
-                          <Button variant="outline" size="sm" onClick={() => simulatePayment(payment.id, 'paid')} className="border-green-500 text-green-600 hover:bg-green-50 hover:text-green-700">Mark Paid</Button>
-                          <Button variant="outline" size="sm" onClick={() => simulatePayment(payment.id, 'failed')} className="border-red-500 text-red-600 hover:bg-red-50 hover:text-red-700">Mark Failed</Button>
+                          <Button 
+                            variant="outline" size="sm" 
+                            onClick={() => simulatePayment(payment.id, 'paid')} 
+                            className="border-green-500 text-green-600 hover:bg-green-50 hover:text-green-700"
+                            disabled={isLoading && simulatingPaymentId === payment.id}
+                          >
+                            {isLoading && simulatingPaymentId === payment.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Mark Paid'}
+                          </Button>
+                          <Button 
+                            variant="outline" size="sm" 
+                            onClick={() => simulatePayment(payment.id, 'failed')} 
+                            className="border-red-500 text-red-600 hover:bg-red-50 hover:text-red-700"
+                            disabled={isLoading && simulatingPaymentId === payment.id}
+                          >
+                             {isLoading && simulatingPaymentId === payment.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Mark Failed'}
+                          </Button>
                         </>
                       )}
                       {payment.paymentLinkUrl && (
@@ -305,4 +331,3 @@ export default function PaymentsPage() {
     </div>
   );
 }
-
