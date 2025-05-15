@@ -40,6 +40,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { cn } from "@/lib/utils";
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from "@/hooks/use-toast";
 
 const PaymentRequestForm: React.FC<{ 
   clients: Client[]; 
@@ -52,11 +53,24 @@ const PaymentRequestForm: React.FC<{
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState<Date | undefined>(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)); // Default to 1 week from now
   const [communicationMethod, setCommunicationMethod] = useState<'sms' | 'email' | 'both'>('both');
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!clientId) {
+      toast({
+        title: "Client Required",
+        description: "Please select a client to request payment from.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!dueDate) {
-      alert("Please select a due date."); // Or use toast
+      toast({
+        title: "Due Date Required",
+        description: "Please select a due date for the payment.",
+        variant: "destructive",
+      });
       return;
     }
     await onSave({ 
@@ -331,3 +345,4 @@ export default function PaymentsPage() {
     </div>
   );
 }
+
