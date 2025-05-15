@@ -10,17 +10,17 @@ interface AppContextType {
   addClient: (clientData: ClientFormData) => Promise<void>;
   updateClient: (clientId: string, updatedData: Partial<ClientFormData>) => Promise<void>;
   deleteClient: (clientId: string) => Promise<void>;
-  getClientById: (clientId: string) => Client | undefined; // Will now find from local cache
+  getClientById: (clientId: string) => Client | undefined; 
   payments: Payment[];
   requestPayment: (paymentData: PaymentFormData) => Promise<void>;
   updatePaymentStatus: (paymentId: string, status: Payment['status']) => Promise<void>;
-  getPaymentsByClientId: (clientId: string) => Payment[]; // Will now find from local cache
+  getPaymentsByClientId: (clientId: string) => Payment[]; 
   user: { name: string; email: string } | null;
   login: (credentials: { email: string; }) => void;
   signup: (details: { name: string; email: string; }) => void;
   logout: () => void;
-  isLoading: boolean; // Generic loading for API calls
-  isLoadingAI: boolean; // Specific for AI refresh operations
+  isLoading: boolean; 
+  isLoadingAI: boolean; 
   refreshClientAIInfo: (clientId: string) => Promise<void>;
   fetchClients: () => Promise<void>;
   fetchPayments: () => Promise<void>;
@@ -32,7 +32,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [clients, setClients] = useState<Client[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // For initial data load and general ops
+  const [isLoading, setIsLoading] = useState(true); 
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const { toast } = useToast();
 
@@ -44,10 +44,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (result.success && result.data) {
         setClients(result.data);
       } else {
-        toast({ title: "Error", description: result.error || "Failed to fetch clients.", variant: "destructive" });
+        toast({ title: "Error Fetching Clients", description: result.error || "Failed to fetch clients.", variant: "destructive" });
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to fetch clients.", variant: "destructive" });
+      toast({ title: "Network Error", description: "Failed to fetch clients due to a network issue.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -61,20 +61,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (result.success && result.data) {
         setPayments(result.data);
       } else {
-        toast({ title: "Error", description: result.error || "Failed to fetch payments.", variant: "destructive" });
+        toast({ title: "Error Fetching Payments", description: result.error || "Failed to fetch payments.", variant: "destructive" });
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to fetch payments.", variant: "destructive" });
+      toast({ title: "Network Error", description: "Failed to fetch payments due to a network issue.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   }, [toast]);
   
   useEffect(() => {
-    setUser({ name: "Demo User", email: "demo@example.com" }); // Mock login
+    // Attempt to retrieve user from localStorage on initial load
+    const storedUser = localStorage.getItem('paywiseUser');
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+      } catch (e) {
+        localStorage.removeItem('paywiseUser'); // Clear invalid storage
+      }
+    } else {
+      // For demo purposes, if no stored user, set a default mock user.
+      // In a real app, you'd likely redirect to login or show a logged-out state.
+      // login({ email: "demo@example.com", name: "Demo User"}); // Auto-login for demo
+    }
     fetchClients();
     fetchPayments();
-  }, [fetchClients, fetchPayments]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // fetchClients, fetchPayments removed from deps to prevent re-fetch on their identity change
 
   const refreshClientAIInfo = useCallback(async (clientId: string) => {
     setIsLoadingAI(true);
@@ -89,7 +103,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     } catch (error) {
       console.error("Error refreshing AI info:", error);
-      toast({ title: "AI Update Failed", description: "Could not update AI insights.", variant: "destructive" });
+      toast({ title: "Network Error", description: "Could not update AI insights due to a network issue.", variant: "destructive" });
     } finally {
       setIsLoadingAI(false);
     }
@@ -108,10 +122,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setClients(prev => [...prev, result.data!]);
         toast({ title: "Client Added", description: `${result.data.name} has been added.` });
       } else {
-        toast({ title: "Error", description: result.error || "Failed to add client.", variant: "destructive" });
+        toast({ title: "Add Client Failed", description: result.error || "Failed to add client.", variant: "destructive" });
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to add client.", variant: "destructive" });
+      toast({ title: "Network Error", description: "Failed to add client due to a network issue.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -130,10 +144,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setClients(prev => prev.map(c => c.id === clientId ? result.data! : c));
         toast({ title: "Client Updated", description: `${result.data.name}'s details have been updated.` });
       } else {
-        toast({ title: "Error", description: result.error || "Failed to update client.", variant: "destructive" });
+        toast({ title: "Update Client Failed", description: result.error || "Failed to update client.", variant: "destructive" });
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to update client.", variant: "destructive" });
+      toast({ title: "Network Error", description: "Failed to update client due to a network issue.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -146,12 +160,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const result: ApiResponse<null> = await response.json();
       if (result.success) {
         setClients(prev => prev.filter(c => c.id !== clientId));
+        setPayments(prev => prev.filter(p => p.clientId !== clientId)); // Also remove payments associated with the client
         toast({ title: "Client Deleted", description: `Client has been removed.` });
       } else {
-        toast({ title: "Error", description: result.error || "Failed to delete client.", variant: "destructive" });
+        toast({ title: "Delete Client Failed", description: result.error || "Failed to delete client.", variant: "destructive" });
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to delete client.", variant: "destructive" });
+      toast({ title: "Network Error", description: "Failed to delete client due to a network issue.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -162,6 +177,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const getPaymentsByClientId = (clientId: string) => payments.filter(p => p.clientId === clientId);
 
   const requestPayment = async (paymentData: PaymentFormData) => {
+    if (!paymentData.clientId) {
+      toast({
+        title: "Client Not Selected",
+        description: "Please select a client before requesting payment.",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsLoading(true);
     try {
       const response = await fetch('/api/payments', {
@@ -172,13 +195,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const result: ApiResponse<Payment> = await response.json();
       if (result.success && result.data) {
         setPayments(prev => [...prev, result.data!]);
-        toast({ title: "Payment Link Sent", description: `Link sent to ${result.data.clientName} for ₹${result.data.amount}.` });
+        toast({ title: "Payment Link Sent", description: result.message || `Link sent for ₹${result.data.amount}.` });
       } else {
         toast({ title: "Payment Request Failed", description: result.error || "Could not process payment request.", variant: "destructive" });
       }
     } catch (error) {
       console.error("Error creating payment link or sending notification:", error);
-      toast({ title: "Payment Request Failed", description: "Could not process payment request.", variant: "destructive" });
+      toast({ title: "Network Error", description: "Could not process payment request due to a network issue.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -195,31 +218,45 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const result: ApiResponse<Payment> = await response.json();
       if (result.success && result.data) {
         setPayments(prev => prev.map(p => p.id === paymentId ? result.data! : p));
-        // If a payment status changes, client's transactions and AI data might have changed too.
-        // Fetching clients again to reflect these server-side changes.
-        await fetchClients(); 
+        if (status === 'paid' || status === 'failed') {
+           // AI insights are updated on the server; refetch client to get latest.
+          const changedPayment = result.data;
+          const clientToUpdate = clients.find(c => c.id === changedPayment.clientId);
+          if (clientToUpdate) {
+            await refreshClientAIInfo(clientToUpdate.id); // This will fetch and update the specific client
+          } else {
+            await fetchClients(); // Fallback to fetching all clients if specific one isn't readily available
+          }
+        }
         toast({ title: "Payment Status Updated", description: `Status for payment ID ${paymentId} changed to ${status}.` });
       } else {
-        toast({ title: "Error", description: result.error || "Failed to update payment status.", variant: "destructive" });
+        toast({ title: "Update Payment Failed", description: result.error || "Failed to update payment status.", variant: "destructive" });
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to update payment status.", variant: "destructive" });
+      toast({ title: "Network Error", description: "Failed to update payment status due to a network issue.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const login = (credentials: { email: string; }) => {
-    setUser({ name: "Mock User", email: credentials.email });
-    toast({ title: "Logged In", description: "Welcome back!"});
+  const login = (credentials: { email: string; name?: string }) => { // name is optional, can be added
+    const userData = { name: credentials.name || "Demo User", email: credentials.email };
+    setUser(userData);
+    localStorage.setItem('paywiseUser', JSON.stringify(userData));
+    toast({ title: "Logged In", description: `Welcome back, ${userData.name}!`});
   };
+
   const signup = (details: { name: string; email: string; }) => {
     setUser(details);
+    localStorage.setItem('paywiseUser', JSON.stringify(details));
     toast({ title: "Signed Up", description: `Welcome, ${details.name}!`});
   };
+
   const logout = () => {
     setUser(null);
-    toast({ title: "Logged Out" });
+    localStorage.removeItem('paywiseUser');
+    toast({ title: "Logged Out", description: "You have been successfully logged out." });
+    // No explicit redirect here, AppLayout will handle redirect to /login
   };
 
   return (
@@ -257,3 +294,4 @@ export const useAppContext = (): AppContextType => {
   }
   return context;
 };
+
