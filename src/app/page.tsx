@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect } from 'react';
@@ -63,7 +64,7 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-background to-secondary/30">
       <header className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex justify-between items-center">
         <Link href="/" className="flex items-center gap-2">
-          <Image src="https://picsum.photos/seed/paywise-landing-logo/40/40" alt="PayWise Logo" width={40} height={40} className="rounded-lg" data-ai-hint="logo financial"/>
+          <Image src="https://placehold.co/40x40.png" alt="PayWise Logo" width={40} height={40} className="rounded-lg" data-ai-hint="logo financial"/>
           <span className="text-2xl font-bold text-primary">PayWise</span>
         </Link>
         <nav className="space-x-2 sm:space-x-4">
