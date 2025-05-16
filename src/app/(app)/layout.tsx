@@ -36,9 +36,10 @@ import {
   Moon,
   Settings,
   Bell,
-  AlertCircle, // Added AlertCircle for complaints
+  AlertCircle, 
   LifeBuoy,
-  Menu
+  Menu,
+  ExternalLink // Added ExternalLink icon
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -91,6 +92,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/clients', label: 'Clients', icon: Users },
     { href: '/payments', label: 'Payments', icon: CreditCard },
+    { 
+      href: 'https://razorpay.com/pricing/', 
+      label: 'Payment Gateway', 
+      icon: ExternalLink, 
+      external: true 
+    },
     { 
       href: 'https://samadhan.labour.gov.in/Users/signup', 
       label: 'Raise Complaints', 
@@ -161,7 +168,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <SidebarInset>
         <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b bg-background px-4 sm:px-6 shadow-sm">
           <div className="md:hidden">
-            <SidebarTrigger> {/* Removed asChild, default button behavior is fine */}
+            <SidebarTrigger>
               <Menu className="h-6 w-6" />
               <span className="sr-only">Toggle Menu</span>
             </SidebarTrigger>
@@ -217,5 +224,3 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
-
-    
