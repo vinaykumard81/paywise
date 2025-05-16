@@ -35,7 +35,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { CalendarIcon, Send, DollarSign, Filter, ClipboardList, Link as LinkIcon, CheckCircle, XCircle, AlertCircle, Clock, Loader2 } from 'lucide-react';
+import { CalendarIcon, Send, IndianRupee, Filter, ClipboardList, Link as LinkIcon, CheckCircle, XCircle, AlertCircle, Clock, Loader2 } from 'lucide-react'; // Replaced DollarSign
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from "@/lib/utils";
@@ -262,7 +262,7 @@ export default function PaymentsPage() {
             </div>
           ) : filteredPayments.length === 0 ? (
              <div className="text-center py-12 text-muted-foreground">
-              <DollarSign className="mx-auto h-16 w-16 mb-4" />
+              <IndianRupee className="mx-auto h-16 w-16 mb-4" />
               <h3 className="text-xl font-semibold mb-2">No Payments Found</h3>
               <p className="mb-4">
                 {filterStatus !== 'all' ? "No payments match the current filter." : "Get started by requesting a payment."}
@@ -346,3 +346,4 @@ export default function PaymentsPage() {
   );
 }
 
+    

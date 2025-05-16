@@ -7,7 +7,7 @@ import { useAppContext } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Mail, Phone, CalendarDays, DollarSign, ListChecks, ShieldAlert, Brain, Edit, Trash2, ArrowLeft, RefreshCw, FileText } from 'lucide-react';
+import { Mail, Phone, CalendarDays, IndianRupee, ListChecks, ShieldAlert, Brain, Edit, Trash2, ArrowLeft, RefreshCw, FileText } from 'lucide-react'; // Replaced DollarSign
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
@@ -37,7 +37,7 @@ export default function ClientDetailPage() {
       refreshClientAIInfo(clientId);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [client, clientId]); // refreshClientAIInfo removed to prevent loop
+  }, [client, clientId]); 
 
   if (!client) {
     return (
@@ -99,7 +99,7 @@ export default function ClientDetailPage() {
         <CardHeader className="bg-gradient-to-r from-primary/10 to-accent/10 p-6">
           <div className="flex items-center space-x-4">
             <Avatar className="h-20 w-20 border-2 border-primary">
-              <AvatarImage src={`https://picsum.photos/seed/${client.email}/100/100`} alt={client.name} data-ai-hint="profile avatar"/>
+              <AvatarImage src={`https://placehold.co/100x100.png?seed=${client.email}`} alt={client.name} data-ai-hint="profile avatar"/>
               <AvatarFallback className="text-2xl">{client.name.substring(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
             <div>
@@ -177,7 +177,7 @@ export default function ClientDetailPage() {
           <CardContent>
             {client.transactions.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <DollarSign className="mx-auto h-12 w-12 mb-2" />
+                <IndianRupee className="mx-auto h-12 w-12 mb-2" />
                 <p>No transactions recorded for this client yet.</p>
               </div>
             ) : (
@@ -214,7 +214,7 @@ export default function ClientDetailPage() {
 
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><DollarSign className="h-6 w-6 text-primary"/>Payment Requests</CardTitle>
+            <CardTitle className="flex items-center gap-2"><IndianRupee className="h-6 w-6 text-primary"/>Payment Requests</CardTitle>
             <CardDescription>History of payment requests sent to this client.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -262,3 +262,4 @@ export default function ClientDetailPage() {
   );
 }
 
+    

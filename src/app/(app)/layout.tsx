@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect } from 'react';
@@ -35,6 +36,7 @@ import {
   Moon,
   Settings,
   Bell,
+  AlertCircle, // Added AlertCircle for complaints
   LifeBuoy,
   Menu
 } from 'lucide-react';
@@ -89,6 +91,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/clients', label: 'Clients', icon: Users },
     { href: '/payments', label: 'Payments', icon: CreditCard },
+    { 
+      href: 'https://samadhan.labour.gov.in/Users/signup', 
+      label: 'Raise Complaints', 
+      icon: AlertCircle, 
+      external: true 
+    },
   ];
 
   return (
@@ -96,7 +104,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <Sidebar>
         <SidebarHeader className="p-4 border-b border-sidebar-border">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <Image src="https://picsum.photos/seed/paywise-logo/40/40" alt="PayWise Logo" width={40} height={40} className="rounded-md" data-ai-hint="logo financial"/>
+            <Image src="https://placehold.co/40x40.png" alt="PayWise Logo" width={40} height={40} className="rounded-md" data-ai-hint="logo financial"/>
             <h1 className="text-xl font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">
               PayWise
             </h1>
@@ -105,17 +113,31 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <SidebarContent className="flex-1 p-2">
           <SidebarMenu>
             {navItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <Link href={item.href} legacyBehavior passHref>
-                  <SidebarMenuButton
-                    isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}
-                    tooltip={{children: item.label}}
-                  >
-                    <item.icon />
-                    <span>{item.label}</span>
-                  </SidebarMenuButton>
-                </Link>
-              </SidebarMenuItem>
+              item.external ? (
+                <SidebarMenuItem key={item.href}>
+                   <a href={item.href} target="_blank" rel="noopener noreferrer" className="w-full">
+                    <SidebarMenuButton
+                        tooltip={{children: item.label}}
+                        className="w-full" 
+                    >
+                        <item.icon />
+                        <span>{item.label}</span>
+                    </SidebarMenuButton>
+                   </a>
+                </SidebarMenuItem>
+              ) : (
+                <SidebarMenuItem key={item.href}>
+                  <Link href={item.href} legacyBehavior passHref>
+                    <SidebarMenuButton
+                      isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}
+                      tooltip={{children: item.label}}
+                    >
+                      <item.icon />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+              )
             ))}
           </SidebarMenu>
         </SidebarContent>
@@ -139,11 +161,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <SidebarInset>
         <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b bg-background px-4 sm:px-6 shadow-sm">
           <div className="md:hidden">
-            <SidebarTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Menu className="h-6 w-6" />
-                <span className="sr-only">Toggle Menu</span>
-              </Button>
+            <SidebarTrigger> {/* Removed asChild, default button behavior is fine */}
+              <Menu className="h-6 w-6" />
+              <span className="sr-only">Toggle Menu</span>
             </SidebarTrigger>
           </div>
            <div className="flex-1">
@@ -158,7 +178,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src={`https://picsum.photos/seed/${user.email}/100/100`} alt={user.name} data-ai-hint="profile avatar"/>
+                    <AvatarImage src={`https://placehold.co/100x100.png?seed=${user.email}`} alt={user.name} data-ai-hint="profile avatar"/>
                     <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                   </Avatar>
                 </Button>
@@ -197,3 +217,5 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
+
+    

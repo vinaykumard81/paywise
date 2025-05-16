@@ -4,9 +4,9 @@
 import React, { useMemo } from 'react';
 import { useAppContext } from '@/contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { DollarSign, TrendingUp, TrendingDown, AlertTriangle, Users, FileText } from 'lucide-react';
+import { IndianRupee, TrendingUp, TrendingDown, AlertTriangle, Users, FileText } from 'lucide-react'; // Replaced DollarSign
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Bar, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
-import { ChartConfig, ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
+import { ChartConfig, ChartContainer, ChartTooltipContent } from "@/components/ui/chart"; // Ensure ChartTooltipContent is imported if used standalone
 
 const chartConfig = {
   income: { label: "Income", color: "hsl(var(--chart-1))" },
@@ -15,11 +15,11 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 const predictionScoreRanges = [
-  { range: '0-20 (Very Low Risk)', color: 'hsl(var(--chart-1))' }, // Teal
-  { range: '21-40 (Low Risk)', color: 'hsl(var(--chart-5))' }, // Light green like
-  { range: '41-60 (Medium Risk)', color: 'hsl(var(--chart-4))' }, // Yellow/Orange
-  { range: '61-80 (High Risk)', color: 'hsl(var(--chart-2))' }, // Orange/Reddish
-  { range: '81-100 (Very High Risk)', color: 'hsl(var(--destructive))' }, // Red
+  { range: '0-20 (Very Low Risk)', color: 'hsl(var(--chart-1))' }, 
+  { range: '21-40 (Low Risk)', color: 'hsl(var(--chart-5))' }, 
+  { range: '41-60 (Medium Risk)', color: 'hsl(var(--chart-4))' }, 
+  { range: '61-80 (High Risk)', color: 'hsl(var(--chart-2))' }, 
+  { range: '81-100 (Very High Risk)', color: 'hsl(var(--destructive))' }, 
 ];
 
 export default function DashboardPage() {
@@ -30,11 +30,10 @@ export default function DashboardPage() {
       .filter(p => p.status === 'paid')
       .reduce((sum, p) => sum + p.amount, 0);
 
-    // Mocking expenses as 30% of income for demo
     const totalExpenses = totalIncome * 0.3; 
 
     const pendingDues = payments
-      .filter(p => p.status === 'link_sent' || p.status === 'pending_link') // Or any status that means "not yet paid"
+      .filter(p => p.status === 'link_sent' || p.status === 'pending_link') 
       .reduce((sum, p) => sum + p.amount, 0);
     
     const averagePredictionScore = clients.length > 0 
@@ -53,21 +52,19 @@ export default function DashboardPage() {
       }
       if (p.status === 'paid') {
         dataMap.get(month)!.income += p.amount;
-        // Mock expenses for the month
         dataMap.get(month)!.expenses += p.amount * 0.3; 
       }
     });
-    // Ensure at least a few months of data for the chart, even if zero
     const currentMonth = new Date().getMonth();
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    for (let i = 0; i < 6; i++) { // Show last 6 months
+    for (let i = 0; i < 6; i++) { 
       const monthIdx = (currentMonth - i + 12) % 12;
       const monthName = monthNames[monthIdx];
       if (!dataMap.has(monthName)) {
         dataMap.set(monthName, { name: monthName, income: 0, expenses: 0 });
       }
     }
-    return Array.from(dataMap.values()).sort((a,b) => monthNames.indexOf(a.name) - monthNames.indexOf(b.name)); // Simple sort, might need refinement for year changes
+    return Array.from(dataMap.values()).sort((a,b) => monthNames.indexOf(a.name) - monthNames.indexOf(b.name));
   }, [payments]);
 
   const predictionScoreDistribution = useMemo(() => {
@@ -91,7 +88,7 @@ export default function DashboardPage() {
         <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Income</CardTitle>
-            <DollarSign className="h-5 w-5 text-green-500" />
+            <IndianRupee className="h-5 w-5 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">₹{stats.totalIncome.toLocaleString()}</div>
@@ -142,7 +139,7 @@ export default function DashboardPage() {
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} />
                 <YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `₹${value/1000}k`} />
-                <ChartTooltipContent />
+                <Tooltip content={<ChartTooltipContent />} cursor={false} />
                 <Legend />
                 <Bar dataKey="income" fill="var(--color-income)" radius={4} />
                 <Bar dataKey="expenses" fill="var(--color-expenses)" radius={4} />
@@ -161,7 +158,7 @@ export default function DashboardPage() {
               <ChartContainer config={chartConfig} className="w-full h-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <ChartTooltipContent nameKey="name" />
+                    <Tooltip content={<ChartTooltipContent nameKey="name" />} />
                     <Pie 
                       data={predictionScoreDistribution} 
                       dataKey="value" 
@@ -247,3 +244,4 @@ export default function DashboardPage() {
   );
 }
 
+    
